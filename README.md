@@ -4,6 +4,9 @@
 **Co-Auditors:** Pratik Bhuvad (Analytical Integrity) & Aman Pal (Stress Testing)  
 **Coordination Leads:** Raj (Convergence Lead), Karan (Technical Lead), Harsha (Review Lead)  
 **Organization:** Black Hole Infiverse (BHIV)  
+**Department:** AI Videos  
+**SETU EOS Ingestion ID:** `ingest_1790529298541_06e7be`  
+**Priority:** Medium | **Target Date:** 2026-10-04  
 **State:** WORKING / FINAL INTEGRATION PREPARATION  
 
 ---
@@ -23,6 +26,7 @@ This repository contains Ansh's independent audit deliverables, comparative anal
 
 | File | Description |
 |---|---|
+| [`SETU_EOS_TASK_REGISTRATION.md`](./SETU_EOS_TASK_REGISTRATION.md) | Official SETU EOS Pipeline task registration, ingestion metadata, and tracking record. |
 | [`PRATIK_AUDIT_VS_ANSH_AUDIT_COMPARISON.md`](./PRATIK_AUDIT_VS_ANSH_AUDIT_COMPARISON.md) | In-depth comparative analysis between Pratik Bhuvad's reproducibility audit and Ansh's data/computational audit. |
 | [`ANSH_BIOTECH_DATA_AI_AUDIT_EXECUTION_PLAN.md`](./ANSH_BIOTECH_DATA_AI_AUDIT_EXECUTION_PLAN.md) | 3-day operational strategy covering Day 1 discovery, Day 2 failure injection, and Day 3 convergence. |
 | [`ANSH_BIOTECH_DATA_AI_AUDIT_REPORT.md`](./ANSH_BIOTECH_DATA_AI_AUDIT_REPORT.md) | Forensic technical report detailing schema boundaries, determinism, AI/ML ground reality, and regulatory limits. |
