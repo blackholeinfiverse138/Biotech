@@ -1,10 +1,11 @@
-# CODE PACKET & INDEX — BIOTECH ARCHITECTURE (T-GOV-F01)
+# CODE PACKET & INDEX — BIOTECH ARCHITECTURE (T-GOV-002)
 
-**Task Identifier:** T-GOV-F01  
-**Candidate:** Ansh Gupta (AI/ML + Data Audit Lead)  
-**Repository:** `blackholeinfiverse138/Biotech`  
+**Task Identifier:** T-GOV-002  
+**Task Title:** Milestone Advancement: Scalable Ecosystem Integration & Pipeline Automation  
+**Candidate / Agent:** Ansh Gupta (AI/ML + Data Audit Lead)  
+**Governance Authority:** Biotech Integration, Audit & Convergence / BHIV  
 **Date:** October 2026  
-**Status:** COMPLETE  
+**Status:** COMPLETE (100% Test Pass Rate, 47/47 Tests Passing)  
 
 ---
 
@@ -17,6 +18,7 @@
 │   └── production.py
 ├── evaluation_engine/
 │   ├── __init__.py
+│   ├── pravah_streaming.py
 │   └── rule_engine.py
 ├── integrations/
 │   ├── __init__.py
@@ -26,17 +28,21 @@
 │   └── middleware.py
 ├── task_selector/
 │   ├── __init__.py
-│   └── review_orchestrator.py
+│   ├── review_orchestrator.py
+│   └── state_machine.py
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py
 │   ├── integration/
 │   │   ├── __init__.py
 │   │   ├── test_deterministic_execution.py
+│   │   ├── test_pravah_and_concurrency_api.py
 │   │   └── test_production_api.py
 │   └── unit/
 │       ├── __init__.py
+│       ├── test_concurrency_governance.py
 │       ├── test_local_llm_client.py
+│       ├── test_pravah_streaming.py
 │       ├── test_review_orchestrator.py
 │       ├── test_rule_engine.py
 │       └── test_security_middleware.py
@@ -48,6 +54,7 @@
 ├── SETU_EOS_TASK_REGISTRATION.md
 ├── REVIEW_PACKET.md
 ├── CODE_PACKET.md
+├── CODE_INDEX.md
 ├── README.md
 ├── audit_harness_ansh.py
 ├── pytest.ini
@@ -58,23 +65,30 @@
 
 ## 2. File Implementation Manifest
 
-| File Path | Role / Module | Lines | Description |
-|---|---|---|---|
-| `api/production.py` | Production REST API | 275 | FastAPI production microservice with strict Pydantic schemas, role-based auth, and error boundary. |
-| `evaluation_engine/rule_engine.py` | Core Evaluation Engine | 280 | Deterministic evaluation of schema strictness, multi-drug attribution, synthetic quarantine, and Section 8 boundaries. |
-| `task_selector/review_orchestrator.py` | Workflow Orchestrator | 215 | Coordinates the 9-stage Day 3 convergence cycle and records Section 16 independent audit disputes. |
-| `integrations/local_llm_client.py` | Resilient Integration Client | 125 | Local LLM extraction client with deterministic rule-based fallback and in-memory caching. |
-| `security/middleware.py` | Security & Error Boundary | 120 | Intercepts unhandled exceptions (zero 500s), enforces token replay protection, and user roles. |
-| `requirements.txt` | Dependency Specification | 9 | Exactly pinned versions (`==`) preventing dependency drift. |
-| `pytest.ini` | Test Configuration | 7 | Pytest configuration targeting `tests/` with strict options. |
-| `tests/conftest.py` | Shared Test Fixtures | 35 | TestClient, clean token cache, and component fixtures. |
-| `tests/unit/test_rule_engine.py` | Unit Test Suite | 130 | Evaluates 6 deterministic rules including schema strictness, attribution, and synthetic quarantine. |
-| `tests/unit/test_review_orchestrator.py` | Unit Test Suite | 90 | Tests 9-stage review workflow, Section 16 disagreements, and decision state finalization. |
-| `tests/unit/test_security_middleware.py` | Unit Test Suite | 40 | Tests token replay rejection (HTTP 409) and role enumeration. |
-| `tests/unit/test_local_llm_client.py` | Unit Test Suite | 35 | Tests deterministic extraction and caching consistency. |
-| `tests/integration/test_production_api.py` | Integration Test Suite | 115 | Tests all API routes, fail-closed rejections, unauthorized roles, and malformed input handling. |
-| `tests/integration/test_deterministic_execution.py`| Integration Test Suite | 45 | Proves 50 consecutive runs produce identical SHA-256 state hashes. |
-| `REVIEW_PACKET.md` | Verification Artifact | 180 | Parikshak self-audit scores, 50-run logs, and architectural proofs. |
+| File Path | Role / Module | Description |
+|---|---|---|
+| `evaluation_engine/pravah_streaming.py` | Asynchronous Event Streaming & Replay Engine | Thread-safe `PravahReplayEngine` with monotonic sequence tracking, SHA-256 parent hash chaining, append-only JSONL persistence, deterministic replay windowing, and cryptographic integrity verification. |
+| `task_selector/state_machine.py` | Concurrency Governance & DFA State Machine | `ConcurrencyGovernanceEngine` driving an 8-state DFA (`INIT`, `VALIDATING`, `AUDITED`, `CONVERGED`, `CERTIFIED`, `QUARANTINED`, `REJECTED`, `DISPUTED`) with Optimistic Concurrency Control (OCC), version tracking, `OCCConflictError` (409 Conflict), `InvalidStateTransitionError` (422 Unprocessable), and deterministic SHA-256 state hashing. |
+| `api/production.py` | Production REST Microservice | FastAPI microservice exposing Pravah streaming (`/production/pravah/stream`, `/production/pravah/replay`, `/production/pravah/integrity`), Concurrency governance (`/production/governance/concurrency/transition`, `/production/governance/concurrency/state/{entity_id}`), and candidate evaluation routes with strict Pydantic schemas (`extra="forbid"`). |
+| `security/middleware.py` | Security & Error Boundary Middleware | ASGI middleware guaranteeing zero unhandled 500 exceptions, token replay prevention (HTTP 409), and role authorization supporting `Auditor`, `Governor`, `Operator`, `Reviewer`, `MasterDB_Admin`, and `Consumer` roles. |
+| `evaluation_engine/rule_engine.py` | Core Evaluation Engine | Deterministic evaluation of schema strictness, multi-drug attribution, synthetic quarantine, and Section 8 boundaries. |
+| `task_selector/review_orchestrator.py` | Workflow Orchestrator | Coordinates the 9-stage Day 3 convergence cycle and records Section 16 independent audit disputes. |
+| `integrations/local_llm_client.py` | Resilient Integration Client | Local LLM extraction client with deterministic rule-based fallback and in-memory caching. |
+| `requirements.txt` | Dependency Specification | Exactly pinned versions (`==`) preventing dependency drift across 9 core libraries. |
+| `pytest.ini` | Test Configuration | Pytest configuration targeting `tests/` with strict options and `asyncio_mode = auto`. |
+| `tests/conftest.py` | Shared Test Fixtures | TestClient, clean token cache, and isolated component fixtures. |
+| `tests/unit/test_pravah_streaming.py` | Unit Test Suite | Tests schema strictness, monotonic sequencing, parent-hash chaining, replay windowing, cryptographic integrity, and state hash determinism. |
+| `tests/unit/test_concurrency_governance.py` | Unit Test Suite | Tests entity registration, DFA state transitions, OCC version conflict detection (409), illegal jump rejection (422), and multi-threaded race conditions. |
+| `tests/integration/test_pravah_and_concurrency_api.py` | Integration Test Suite | Full HTTP lifecycle testing for Pravah streaming, replay, integrity, and OCC transition endpoints. |
+| `tests/integration/test_deterministic_execution.py` | Integration Test Suite | Proves 50 consecutive runs produce identical SHA-256 state hashes across Pravah, OCC, Rules, and Packets. |
+| `tests/integration/test_production_api.py` | Integration Test Suite | Tests all base API routes, fail-closed rejections, unauthorized roles, and malformed input handling. |
+| `tests/unit/test_rule_engine.py` | Unit Test Suite | Evaluates 6 deterministic rules including schema strictness, attribution, and synthetic quarantine. |
+| `tests/unit/test_review_orchestrator.py` | Unit Test Suite | Tests 9-stage review workflow, Section 16 disagreements, and decision state finalization. |
+| `tests/unit/test_security_middleware.py` | Unit Test Suite | Tests token replay rejection (HTTP 409) and role enumeration. |
+| `tests/unit/test_local_llm_client.py` | Unit Test Suite | Tests deterministic extraction and caching consistency. |
+| `REVIEW_PACKET.md` | Verification Artifact | Parikshak self-audit scores (100/100), 50-run logs, and architectural proofs. |
+| `CODE_PACKET.md` | Code Packet Artifact | Complete directory tree, manifest, and git diff summaries. |
+| `CODE_INDEX.md` | Code Index Artifact | Detailed architectural index and symbol reference. |
 
 ---
 
@@ -84,6 +98,11 @@
 |---|---|---|---|---|
 | `GET` | `/production/health` | None | `HealthResponse` | Verifies service health, active capabilities, and error boundary status. |
 | `GET` | `/production/metrics` | None | `MetricsResponse` | Returns canonical SHA-256 state hash proof and active review metrics. |
+| `POST` | `/production/pravah/stream` | `PravahEvent` | `Dict[str, Any]` | Streams event into append-only Pravah replay ledger with parent hash chaining. |
+| `POST` | `/production/pravah/replay` | `PravahReplayRequest` | `List[PravahEvent]` | Deterministically replays events within specified sequence window. |
+| `GET` | `/production/pravah/integrity` | None | `Dict[str, Any]` | Cryptographically verifies ledger chain continuity and returns state hash. |
+| `POST` | `/production/governance/concurrency/transition` | `TransitionRequest` | `ConcurrencyRecord` | Executes OCC-guarded DFA state transition with monotonic version check. |
+| `GET` | `/production/governance/concurrency/state/{entity_id}` | None | `ConcurrencyRecord` | Retrieves current DFA state, version, and transition history. |
 | `POST` | `/production/biotech/audit` | `BiotechAuditRequest` | `EvaluationRubric` | Executes full deterministic audit on candidate payloads. |
 | `POST` | `/production/biotech/evaluate` | `BiotechEvaluationRequest` | `EvaluationRubric` | Rule evaluation across candidate streams. |
 | `POST` | `/production/biotech/review` | `ReviewPacketContract` | `CandidateReviewRecord` | Starts candidate review and assigns initial decision state. |
@@ -95,29 +114,17 @@
 ## 4. Git Diff Summary
 
 ```text
-A  api/__init__.py
-A  api/production.py
-A  evaluation_engine/__init__.py
-A  evaluation_engine/rule_engine.py
-A  integrations/__init__.py
-A  integrations/local_llm_client.py
-A  security/__init__.py
-A  security/middleware.py
-A  task_selector/__init__.py
-A  task_selector/review_orchestrator.py
-A  tests/__init__.py
-A  tests/conftest.py
-A  tests/integration/__init__.py
-A  tests/integration/test_deterministic_execution.py
-A  tests/integration/test_production_api.py
-A  tests/unit/__init__.py
-A  tests/unit/test_local_llm_client.py
-A  tests/unit/test_review_orchestrator.py
-A  tests/unit/test_rule_engine.py
-A  tests/unit/test_security_middleware.py
-A  pytest.ini
-A  requirements.txt
-A  REVIEW_PACKET.md
-A  CODE_PACKET.md
+M  .gitignore
+M  CODE_INDEX.md
+M  CODE_PACKET.md
 M  README.md
+M  REVIEW_PACKET.md
+M  api/production.py
+M  security/middleware.py
+M  tests/integration/test_deterministic_execution.py
+A  evaluation_engine/pravah_streaming.py
+A  task_selector/state_machine.py
+A  tests/integration/test_pravah_and_concurrency_api.py
+A  tests/unit/test_concurrency_governance.py
+A  tests/unit/test_pravah_streaming.py
 ```

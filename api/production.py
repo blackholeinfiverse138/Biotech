@@ -16,7 +16,7 @@ import hashlib
 import os
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from evaluation_engine.rule_engine import BiotechRuleEngine, EvaluationRubric, RuleEvaluationResult
 from task_selector.review_orchestrator import (
@@ -27,6 +27,18 @@ from task_selector.review_orchestrator import (
     DecisionState
 )
 from integrations.local_llm_client import LocalLLMClient, LLMVerificationResponse
+from evaluation_engine.pravah_streaming import (
+    PravahEventType,
+    PravahEvent,
+    PravahReplayEngine,
+)
+from task_selector.state_machine import (
+    GovernanceLifecycleState,
+    ConcurrencyRecord,
+    ConcurrencyGovernanceEngine,
+    OCCConflictError,
+    InvalidStateTransitionError,
+)
 from security.middleware import (
     ErrorBoundaryMiddleware,
     UserRole,
@@ -90,6 +102,30 @@ class MetricsResponse(BaseModel):
 # =============================================================================
 # Core Router & Application Setup
 # =============================================================================
+
+class PravahStreamEventRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    trace_id: str = Field(..., min_length=4, max_length=128, description="Distributed trace ID")
+    event_type: PravahEventType = Field(..., description="Canonical Pravah event type")
+    payload: Dict[str, Any] = Field(..., description="Event payload data")
+    source_system: str = Field(default="BIOTECH", min_length=2, max_length=64, description="Originating system")
+    destination: str = Field(default="PRAVAH_REPLAY_LEDGER", min_length=2, max_length=64, description="Target subsystem")
+
+
+class PravahReplayRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    from_sequence: int = Field(default=1, ge=1, description="Start sequence for replay")
+    to_sequence: Optional[int] = Field(default=None, ge=1, description="End sequence for replay")
+
+
+class ConcurrencyTransitionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    entity_id: str = Field(..., min_length=3, max_length=128, description="Unique entity identifier")
+    expected_version: int = Field(..., ge=1, description="Expected OCC record version")
+    target_state: GovernanceLifecycleState = Field(..., description="Target DFA lifecycle state")
+    actor: str = Field(..., min_length=2, max_length=64, description="Transition operator")
+    trace_id: str = Field(..., min_length=4, max_length=128, description="Trace identifier")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Supplementary transition metadata")
 
 router = APIRouter(prefix="/production", tags=["Biotech Production"])
 
@@ -196,6 +232,78 @@ def extract_biotech_entities(
 ):
     """Extracts entities and adverse events using local LLM with deterministic fallback."""
     return llm_client.verify_biotech_text(text=req.text, query_id=req.query_id)
+
+
+
+pravah_engine = PravahReplayEngine(ledger_path="storage/biotech_pravah_replay.jsonl")
+concurrency_engine = ConcurrencyGovernanceEngine(pravah_engine=pravah_engine)
+
+@router.post("/api/v1/pravah/stream", response_model=PravahEvent, tags=["Pravah Replay Ledger"])
+def stream_pravah_event(
+    request: PravahStreamEventRequest,
+    role: UserRole = Depends(require_role([UserRole.GOVERNOR, UserRole.AUDITOR, UserRole.REVIEWER, UserRole.ANSH_AUDIT_LEAD, UserRole.CONSUMER]))
+) -> PravahEvent:
+    """Streams an event to the append-only Pravah replay ledger with cryptographic hash chaining."""
+    return pravah_engine.append_event(
+        trace_id=request.trace_id,
+        event_type=request.event_type,
+        payload=request.payload,
+        source_system=request.source_system,
+        destination=request.destination
+    )
+
+
+@router.post("/api/v1/pravah/replay", response_model=List[PravahEvent], tags=["Pravah Replay Ledger"])
+def replay_pravah_events(
+    request: PravahReplayRequest,
+    role: UserRole = Depends(require_role([UserRole.GOVERNOR, UserRole.AUDITOR, UserRole.REVIEWER, UserRole.ANSH_AUDIT_LEAD, UserRole.CONSUMER]))
+) -> List[PravahEvent]:
+    """Replays events deterministically from specified sequence range."""
+    return pravah_engine.replay(from_sequence=request.from_sequence, to_sequence=request.to_sequence)
+
+
+@router.get("/api/v1/pravah/integrity", tags=["Pravah Replay Ledger"])
+def verify_pravah_integrity() -> Dict[str, Any]:
+    """Verifies cryptographic hash continuity and monotonic sequencing of Pravah replay ledger."""
+    return pravah_engine.verify_integrity()
+
+
+@router.post("/api/v1/governance/concurrency/transition", response_model=ConcurrencyRecord, tags=["Concurrency Governance"])
+def transition_concurrency_state(
+    request: ConcurrencyTransitionRequest,
+    role: UserRole = Depends(require_role([UserRole.GOVERNOR, UserRole.AUDITOR, UserRole.ANSH_AUDIT_LEAD]))
+) -> ConcurrencyRecord:
+    """Executes an Optimistic Concurrency Control (OCC) protected state transition."""
+    try:
+        return concurrency_engine.transition_state(
+            entity_id=request.entity_id,
+            expected_version=request.expected_version,
+            target_state=request.target_state,
+            actor=request.actor,
+            trace_id=request.trace_id,
+            metadata=request.metadata
+        )
+    except OCCConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message)
+    except InvalidStateTransitionError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message)
+
+
+@router.get("/api/v1/governance/concurrency/state/{entity_id}", tags=["Concurrency Governance"])
+def get_concurrency_state(entity_id: str) -> Dict[str, Any]:
+    record = concurrency_engine.get_entity_state(entity_id)
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Entity '{entity_id}' not found.")
+    return record.model_dump()
+
+
+@router.post("/api/v1/governance/reset", tags=["System Internal"])
+def reset_governance_state(
+    role: UserRole = Depends(require_role([UserRole.GOVERNOR, UserRole.ANSH_AUDIT_LEAD]))
+) -> Dict[str, str]:
+    pravah_engine.reset_for_tests()
+    concurrency_engine.reset_for_tests()
+    return {"status": "reset_completed"}
 
 
 # =============================================================================

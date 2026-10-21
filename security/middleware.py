@@ -28,6 +28,8 @@ class UserRole(str, Enum):
     REVIEWER = "Reviewer"
     OPERATOR = "Operator"
     ANSH_AUDIT_LEAD = "Ansh_Audit_Lead"
+    CONSUMER = "Consumer"
+    MASTERDB_ADMIN = "MasterDB_Admin"
 
 
 class SecurityConfig:
@@ -69,11 +71,13 @@ def require_role(allowed_roles: list[UserRole]):
     FastAPI dependency enforcing role-based access control.
     """
     def dependency(
-        x_user_role: Optional[str] = Header(default="Auditor"),
+        x_user_role: Optional[str] = Header(default=None, alias="X-User-Role"),
+        x_role: Optional[str] = Header(default=None, alias="X-Role"),
         x_auth_token: Optional[str] = Header(default=None)
     ):
+        role_str = x_user_role or x_role or "Auditor"
         # Validate role
-        matching_role = next((r for r in allowed_roles if r.value.lower() == str(x_user_role).lower()), None)
+        matching_role = next((r for r in allowed_roles if r.value.lower() == str(role_str).lower()), None)
         if not matching_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
