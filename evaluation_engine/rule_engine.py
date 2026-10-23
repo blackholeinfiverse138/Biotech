@@ -41,6 +41,27 @@ class EvaluationRubric(BaseModel):
     evaluation_result: str = "PASS"  # PASS or FAIL
     failure_type: Optional[str] = None
 
+    @property
+    def overall_pass(self) -> bool:
+        return self.evaluation_result == "PASS"
+
+    @property
+    def score(self) -> int:
+        return int(self.composite_score)
+
+    @property
+    def deterministic_hash(self) -> str:
+        data = {
+            "code_present": self.code_present,
+            "proof_present": self.proof_present,
+            "arch_present": self.arch_present,
+            "composite_score": self.composite_score,
+            "evaluation_result": self.evaluation_result,
+            "failure_type": self.failure_type
+        }
+        serialized = json.dumps(data, sort_keys=True, separators=(',', ':'))
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
 
 class BiotechRuleEngine:
     """
@@ -360,4 +381,21 @@ class BiotechRuleEngine:
             composite_score=round(total_score, 2),
             evaluation_result="PASS" if all_passed else "FAIL",
             failure_type=failure_type
+        )
+
+    def evaluate_candidate_submission(
+        self,
+        task_id: str,
+        candidate_name: str,
+        capability_name: str,
+        payload: Dict[str, Any],
+        query_drug: Optional[str] = None
+    ) -> EvaluationRubric:
+        """Helper to evaluate full submission from candidate parameters."""
+        reported_drugs = payload.get("associated_drugs", [])
+        return self.evaluate_full_submission(
+            capability=capability_name,
+            payload=payload,
+            reported_drugs=reported_drugs,
+            query_drug=query_drug
         )

@@ -370,6 +370,8 @@ def create_application() -> FastAPI:
     # Add Error Boundary Middleware (Guarantees ZERO unhandled 500s)
     app_instance.add_middleware(ErrorBoundaryMiddleware)
     app_instance.include_router(router)
+    from api.review_routes import router as review_router
+    app_instance.include_router(review_router)
     return app_instance
 
 
