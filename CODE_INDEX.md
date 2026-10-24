@@ -92,6 +92,9 @@
 ### `integrations/local_llm_client.py`
 - `class LocalLLMClient`: Offline deterministic fallback semantic entity extractor and red-flag detector.
 
+### `sources/`
+- `sources/bhiv-masterdb-ingestion-certification-service/`: External reference repository for MasterDB Ingestion and Certification Service data contracts, schema definitions, and JWT authentication specifications. Excluded from git tracking via `.gitignore`.
+
 ---
 
 ## 2. Test Suite Mapping
