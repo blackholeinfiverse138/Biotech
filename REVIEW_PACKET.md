@@ -60,6 +60,9 @@ This packet proves the complete structural remediation of **T-GOV-F01** and mile
    - Monotonic version checking returning HTTP 409 Conflict on version drift, and HTTP 422 Unprocessable on illegal state jumps.
 5. **Automated Test Suite with 100% Pass Rate:**
    - Comprehensive unit and integration test suites covering edge cases, race conditions, replay integrity, and failure injection.
+6. **MasterDB Ingestion Certification Service Integration:**
+   - Unified `canonical_db/integration.py` (`MasterDBIntegrationAdapter`) with the central MasterDB ingestion platform (`bhiv-masterdb-ingestion-certification-service`).
+   - Integrated `POST /ingest` with target database routing (`RelationalDB`, `MetadataDB`), `POST /validate`, `POST /certify`, and JWT `HS256` role-based authentication (`Operator`, `Governor`, `Ansh`).
 
 ---
 
@@ -75,6 +78,7 @@ This packet proves the complete structural remediation of **T-GOV-F01** and mile
 | **Gate 6: Replay Continuity** | Pravah ledger passes cryptographic hash chain validation | `PravahReplayEngine.verify_integrity()` | **PASSED** | Zero sequence breaks, zero parent hash discontinuities |
 | **Gate 7: Concurrency Safety** | Race condition updates must not cause lost updates | `test_occ_concurrent_race_condition` | **PASSED** | Exactly 1 thread succeeds; competing threads fail with 409 OCC Conflict |
 | **Gate 8: Review Packet Hard Gate**| Phase 1 Hard Gate schema compliance | `review_packet_parser.enforce_packet_requirement()` | **PASSED** | Valid: True, Confidence: 1.0, 4/4 required sections |
+| **Gate 9: Ingestion Integration** | Conforms to MasterDB IngestRequest & JWT auth | `test_integration_adapters` | **PASSED** | RelationalDB & MetadataDB targets, HS256 auth, 100.0 score |
 
 ---
 

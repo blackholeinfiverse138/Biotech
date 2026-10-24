@@ -15,7 +15,7 @@
 
 ### `canonical_db/db.py` & `canonical_db/integration.py`
 - `class SQLiteCanonicalDB`: Thread-safe persistence engine managing canonical audit candidate histories, evaluation scores, decision states, and deterministic state hash snapshots.
-- `class MasterDBIntegrationAdapter`: Integration adapter for MasterDB communication, ping health-checks, and record synchronization.
+- `class MasterDBIntegrationAdapter`: Integration adapter for MasterDB communication, JWT HS256 authentication (`generate_auth_token`), dataset validation (`validate_dataset`), certification (`certify_dataset`), multi-target ingestion dispatch (`submit_ingest_request` across 8 Target Databases: `RelationalDB`, `VectorDB`, `GraphDB`, `DocumentDB`, `MetadataDB`, `TimeSeriesDB`, `LedgerDB`, `BlobStorage`), ping health-checks, and record synchronization.
 - `class ParikshakSyncAdapter`: Interoperability bridge synchronizing evaluation verdicts, audit rubrics, and verification tokens with the Parikshak evaluation platform.
 
 ### `core/engine.py`

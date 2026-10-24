@@ -13,7 +13,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.production import app
-from models.schemas import BiotechAuditRequest, StrictBaseModel
+from models.schemas import (
+    BiotechAuditRequest,
+    StrictBaseModel,
+    MasterDBIngestRequest,
+    MasterDBIngestJob,
+    TargetDatabase,
+    IngestionFormat,
+    IngestionJobStatus
+)
 from canonical_db.db import CanonicalDB
 from canonical_db.integration import MasterDBIntegrationAdapter, ParikshakSyncAdapter
 from services.governance_service import GovernanceService
@@ -101,12 +109,47 @@ def test_canonical_db_operations(tmp_path):
 
 
 def test_integration_adapters():
-    """Tests MasterDB and Parikshak synchronization adapters."""
+    """Tests MasterDB and Parikshak synchronization adapters with real Ingestion Certification contracts."""
     m_adapter = MasterDBIntegrationAdapter(endpoint_url="http://mock-masterdb:8000")
     ping = m_adapter.ping()
     assert "status" in ping
 
+    # 1. JWT Authentication with Parikshak / MasterDB credentials
+    token = m_adapter.generate_auth_token(actor="Ansh", roles=["operator", "ingest:operator", "ingest:relationaldb"])
+    assert isinstance(token, str) and len(token) > 20
+
     p_adapter = ParikshakSyncAdapter()
+    token_verification = p_adapter.verify_token(token)
+    assert token_verification["valid"] is True
+    assert token_verification["payload"]["sub"] == "Ansh"
+    assert "ingest:relationaldb" in token_verification["payload"]["roles"]
+
+    # 2. MasterDB Ingest Request to RelationalDB target
+    ingest_req = MasterDBIngestRequest(
+        dataset_id="DS-BIOTECH-SARA-001",
+        target_database=TargetDatabase.RELATIONAL_DB,
+        source_format=IngestionFormat.JSON,
+        package_id="pkg-biotech-sara-1",
+        metadata={"candidate": "Sara", "capability": "Formulation Stability"}
+    )
+    job = m_adapter.submit_ingest_request(ingest_req, actor="Ansh")
+    assert job.dataset_id == "DS-BIOTECH-SARA-001"
+    assert job.target_database == TargetDatabase.RELATIONAL_DB
+    assert job.status == IngestionJobStatus.PERSISTED
+    assert job.integrity_score == 100.0
+    assert len(job.steps) == 4
+    assert all(s.passed for s in job.steps)
+
+    # 3. Validation and Certification requests
+    val = m_adapter.validate_dataset("datasets/sara_formulation.json", dataset_id="DS-BIOTECH-SARA-001")
+    assert val["validation_passed"] is True
+    assert val["score"] == 100.0
+
+    cert = m_adapter.certify_dataset("DS-BIOTECH-SARA-001")
+    assert cert["state"] == "CERTIFIED"
+    assert cert["eligible_for_masterdb"] is True
+
+    # 4. Parikshak candidate history sync
     sync = p_adapter.sync_candidate_history("Ansh Gupta", "T-GOV-F01", 100, "APPROVED")
     assert sync["synced"] is True
     assert sync["score"] == 100
